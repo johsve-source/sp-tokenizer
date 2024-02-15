@@ -1,10 +1,12 @@
 const express = require('express');
-const jwt = require('jsonwebtoken');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const dotenv = require('dotenv');
 const path = require('path');
+const fs = require('fs');
+const https = require('https');
+const { generateToken, validateToken } = require('./authMiddleware');
 
 dotenv.config();
 
@@ -32,23 +34,12 @@ app.get('/generate-token', (req, res) => {
       .json({ message: 'API_KEY is not configured properly' });
   }
 
-  const payload = {
-    sub: userId,
-    apiKey: apiKey,
-    exp: Math.floor(Date.now() / 1000) + 60 * 60,
-    // Add any additional claims
-  };
-
-  const secretKey = process.env.JWT_SECRET;
-
-  if (!secretKey) {
-    return res
-      .status(500)
-      .json({ message: 'JWT_SECRET is not configured properly' });
+  try {
+    const token = generateToken(userId, apiKey);
+    res.json({ token });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
-
-  const token = jwt.sign(payload, secretKey);
-  res.json({ token });
 });
 
 app.post('/validate-token', (req, res) => {
@@ -58,27 +49,11 @@ app.post('/validate-token', (req, res) => {
     return res.status(400).json({ message: 'Token is missing' });
   }
 
-  const secretKey = process.env.JWT_SECRET;
-
-  if (!secretKey) {
-    return res
-      .status(500)
-      .json({ message: 'JWT_SECRET is not configured properly' });
-  }
-
   try {
-    const decoded = jwt.verify(token, secretKey);
-    const apiKey = decoded.apiKey;
-
-    if (apiKey !== process.env.API_KEY) {
-      return res.status(401).json({ message: 'Invalid API key' });
-    }
-
-    // You may perform additional checks or fetch more user-related data here
-
-    res.json({ message: 'Token is valid', user: decoded });
+    const user = validateToken(token);
+    res.json({ message: 'Token is valid', user });
   } catch (error) {
-    res.status(401).json({ message: 'Invalid token' });
+    res.status(401).json({ message: error.message });
   }
 });
 
@@ -90,6 +65,22 @@ app.get('*', (req, res) => {
 });
 
 const port = process.env.PORT || 3000;
-app.listen(port, () => {
-  console.log(`Server is running on http://localhost:${port}`);
-});
+
+// HTTPS Configuration (for development)
+const isDevelopment = process.env.NODE_ENV === 'development';
+
+if (isDevelopment) {
+  const privateKey = fs.readFileSync('path/to/private-key.pem', 'utf8');
+  const certificate = fs.readFileSync('path/to/certificate.pem', 'utf8');
+  const credentials = { key: privateKey, cert: certificate };
+
+  const httpsServer = https.createServer(credentials, app);
+  httpsServer.listen(port, () => {
+    console.log(`Server is running on https://localhost:${port}`);
+  });
+} else {
+  // In production, you might want to use a reverse proxy (e.g., Nginx) for HTTPS termination
+  app.listen(port, () => {
+    console.log(`Server is running on http://localhost:${port}`);
+  });
+}
