@@ -70,8 +70,8 @@ const port = process.env.PORT || 3000;
 const isDevelopment = process.env.NODE_ENV === 'development';
 
 if (isDevelopment) {
-  const privateKey = fs.readFileSync('path/to/private-key.pem', 'utf8');
-  const certificate = fs.readFileSync('path/to/certificate.pem', 'utf8');
+  const privateKey = fs.readFileSync('./openssl/privkey.pem', 'utf8');
+  const certificate = fs.readFileSync('./openssl/certificate.pem', 'utf8');
   const credentials = { key: privateKey, cert: certificate };
 
   const httpsServer = https.createServer(credentials, app);
