@@ -1,7 +1,7 @@
 <template>
   <div id="app">
     <div class="container">
-      <h1>Token Generator</h1>
+      <h1>Snälla Pojkar - Token Generator</h1>
       <button @click="generateToken">Generate Token</button>
       <div v-if="generatedToken">
         <p class="token-label">Generated Token:</p>
@@ -61,7 +61,9 @@ export default {
 }
 
 .container {
-  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  max-width: 980px;
   margin: 0 auto;
 }
 
